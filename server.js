@@ -1,11 +1,16 @@
+require('dotenv').config();
 const express = require('express');
-
 const app = express();
 
-app.get('/',(req,res)=>{
-    res.send("This is Sequelize app");
-});
+const userRoutes = require("./routes/user.routes");
+const eventRoutes = require("./routes/event.routes");
+const PORT = process.env.PORT
 
-app.listen(6060,()=>{
-    console.log("Server is running on port 6060"); 
+app.use(express.json());
+
+app.use('/api/v1/user',userRoutes);
+app.use('/api/v1/event',eventRoutes);
+
+app.listen(PORT,()=>{
+    console.log(`Server is running on port ${PORT} 🚀`); 
 })
