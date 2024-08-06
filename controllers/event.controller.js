@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
 const db = require("../models/index");
+const { isDate,isEmail } = require('validator');
 const Event = db.Event;
 const User = db.User;
 const Invite = db.Invite;
@@ -11,6 +12,15 @@ const createEvent = async (req, res) => {
         if (!title || !description || !date || !location) {
             return res.status(400).json({ message: 'All fields are required' });
         };
+
+        if (!isDate(date)) {
+            return res.status(400).json({ message: 'Invalid date format' });
+        }
+
+        const eventDate = new Date(date);
+        if (eventDate < new Date()) {
+            return res.status(400).json({ message: 'Event date cannot be in the past' });
+        }
 
         const user = req.user;
         if (!user) {
@@ -45,6 +55,10 @@ const updateEvent = async (req, res) => {
             return res.status(404).json({ error: 'Unauthorized user does not have permission' });
         };
 
+        if (date && new Date(date) < new Date()) {
+            return res.status(400).json({ message: 'Event date cannot be in the past' });
+        }
+
         const updateEvent = await Event.update({
             title,
             description,
@@ -65,6 +79,10 @@ const inviteUser = async (req, res) => {
         const ownerId = req.user.id;
         const eventId = req.params.id;
         const { email } = req.body;
+
+        if (!isEmail(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
 
         const user = await User.findOne({ where: { email } });
         if (!user) {

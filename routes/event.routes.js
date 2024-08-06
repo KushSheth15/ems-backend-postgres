@@ -4,16 +4,13 @@ const router = express.Router();
 const {createEvent,updateEvent,inviteUser,userCreatedAndInvitedEvents,getEventWithInvitedUsers,getUserEvents} = require("../controllers/event.controller");
 const verifyToken = require("../middlewares/auth.middleware");
 
-router.post('/create',verifyToken,createEvent);
+const {EVENT_ROUTES} = require("../constants/routes.constants");
 
-router.put('/update/:id',verifyToken,updateEvent);
-
-router.post('/invite/:id',verifyToken,inviteUser);
-
-router.get('/created-Invited',verifyToken,userCreatedAndInvitedEvents);
-
-router.get('/invited-events/:id',getEventWithInvitedUsers);
-
-router.get('/get-events',verifyToken,getUserEvents);
+router.post(EVENT_ROUTES.CREATE, verifyToken, createEvent);
+router.put(EVENT_ROUTES.UPDATE, verifyToken, updateEvent);
+router.post(EVENT_ROUTES.INVITE, verifyToken, inviteUser);
+router.get(EVENT_ROUTES.CREATED_INVITED, verifyToken, userCreatedAndInvitedEvents);
+router.get(EVENT_ROUTES.INVITED_EVENTS, getEventWithInvitedUsers);
+router.get(EVENT_ROUTES.GET_EVENTS, verifyToken, getUserEvents);
 
 module.exports = router;
