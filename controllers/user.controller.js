@@ -61,37 +61,37 @@ const loginUser = async (req, res) => {
     }
 }
 
-// const logoutUser = async (req, res) => {
-//     try {
-//         const userId  = req.user.id;
+const logoutUser = async (req, res) => {
+    try {
+        const userId  = req.user.id;
 
-//         const user = await User.findByPk(userId);
+        const user = await User.findByPk(userId);
 
-//         if (!user) {
-//             return res.status(404).json({ message: 'User not found' });
-//         }
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-//         // if (user.token !== token) {
-//         //     return res.status(400).json({ message: 'Invalid token' });
-//         // }
+        if (user.token !== token) {
+            return res.status(400).json({ message: 'Invalid token' });
+        }
 
-//         await User.update(
-//             {
-//                 token: null,
-//                 tokenType: null,
-//                 expireAt: null
-//             },
-//             {
-//                 where: { id: userId }
-//             }
-//         );
+        await User.update(
+            {
+                token: null,
+                tokenType: null,
+                expireAt: null
+            },
+            {
+                where: { id: userId }
+            }
+        );
 
-//         res.status(200).json({ message: 'Logged out successfully' });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ error: 'An error occurred while logging out' });
-//     }
-// };
+        res.status(200).json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'An error occurred while logging out' });
+    }
+};
 
 const changePassword = async (req, res) => {
     try {
@@ -190,6 +190,6 @@ module.exports = {
     loginUser,
     changePassword,
     resetPassword,
-    updatePassword
-    // logoutUser
+    updatePassword,
+    logoutUser
 }

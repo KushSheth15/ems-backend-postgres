@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const {createEvent,updateEvent,inviteUser,userCreatedAndInvitedEvents,getEventWithInvitedUsers} = require("../controllers/event.controller");
+const {createEvent,updateEvent,inviteUser,userCreatedAndInvitedEvents,getEventWithInvitedUsers,getUserEvents} = require("../controllers/event.controller");
 const verifyToken = require("../middlewares/auth.middleware");
 
 router.post('/create',verifyToken,createEvent);
@@ -12,6 +12,8 @@ router.post('/invite/:id',verifyToken,inviteUser);
 
 router.get('/created-Invited',verifyToken,userCreatedAndInvitedEvents);
 
-router.get('/event/:id',getEventWithInvitedUsers);
+router.get('/invited-events/:id',getEventWithInvitedUsers);
+
+router.get('/get-events',verifyToken,getUserEvents);
 
 module.exports = router;

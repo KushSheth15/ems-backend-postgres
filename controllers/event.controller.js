@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const db = require("../models/index");
 const Event = db.Event;
 const User = db.User;
@@ -106,12 +107,12 @@ const userCreatedAndInvitedEvents = async (req, res) => {
             include: [
                 {
                     model: Event,
-                    as:"createdEvent",
+                    as: "createdEvent",
                     attributes: ["title", "date", "location", "status"],
                 },
                 {
                     model: Event,
-                    as:"invitedEvent",
+                    as: "invitedEvent",
                     attributes: ["title", "description", "date", "location", "status"],
                     through: { attributes: [] }
                 }
@@ -128,19 +129,22 @@ const userCreatedAndInvitedEvents = async (req, res) => {
 
 const getEventWithInvitedUsers = async (req, res) => {
     try {
-        const eventId = req.params.id;  
-
+        const eventId = req.params.id;
         // Find the event with invited users
         const event = await Event.findByPk(eventId, {
             attributes: ["title", "date"],
             include: [
                 {
                     model: User,
-                    as: 'invitedUsers',  
-                    attributes: ["id", "username", "email"]  
+                    as: 'invitedUsers',
+                    attributes: ["username", "email"],
+                    through: {
+                        attributes: []
+                    }
                 }
             ]
         });
+
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
@@ -154,10 +158,99 @@ const getEventWithInvitedUsers = async (req, res) => {
     }
 };
 
+const getUserEvents = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { page = 1, limit = 6, sortBy = 'date', sortOrder = 'ASC', startDate, endDate, search } = req.query;
+
+        const offset = (page - 1) * limit;
+
+        // Define where conditions for filtering
+        const dateFilter = {};
+        const searchFilter = {};
+
+        // Filter by date range
+        if (startDate && endDate) {
+            dateFilter.date = { [Op.between]: [new Date(startDate), new Date(endDate)] };
+        }
+
+        // Filter by search term
+        if (search) {
+            searchFilter.title = { [Op.iLike]: `%${search}%` };
+        }
+
+        // Get events created by the user
+        const createdEvents = await Event.findAndCountAll({
+            where: {
+                ...dateFilter,
+                ...searchFilter,
+                userId: userId // Events created by the user
+            },
+            include: [
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['username'],
+                    
+                }
+            ],
+            order: [[sortBy, sortOrder]],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            logging: console.log
+        });
+
+        // Get events where the user is invited
+        const invitedEvents = await Event.findAndCountAll({
+            where: dateFilter,
+            include: [
+                {
+                    model: User,
+                    as: 'invitedUsers',
+                    attributes: ['username', 'email'],
+                    through: {
+                        attributes: [] 
+                    },
+                    where: { id: userId } // This ensures events where the user is invited
+                },
+                {
+                    model: User,
+                    as: 'creator',
+                    attributes: ['username']
+                }
+            ],
+            order: [[sortBy, sortOrder]],
+            limit: parseInt(limit),
+            offset: parseInt(offset),
+            logging: console.log
+        });
+
+        return res.status(200).json({
+            createdEvents: {
+                total: createdEvents.count,
+                page: parseInt(page),
+                totalPages: Math.ceil(createdEvents.count / limit),
+                events: createdEvents.rows
+            },
+            invitedEvents: {
+                total: invitedEvents.count,
+                page: parseInt(page),
+                totalPages: Math.ceil(invitedEvents.count / limit),
+                events: invitedEvents.rows
+            }
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: 'An error occurred while fetching events' });
+    }
+};
+
 module.exports = {
     createEvent,
     updateEvent,
     inviteUser,
     userCreatedAndInvitedEvents,
-    getEventWithInvitedUsers
+    getEventWithInvitedUsers,
+    getUserEvents
 }
