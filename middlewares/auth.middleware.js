@@ -14,7 +14,6 @@ const verifyToken = async (req, res, next) => {
         const decoded = jwt.verify(token,config.ACCESS_TOKEN_SECRET);
         const user = await User.findOne({ where: { id: decoded.id } });
 
-        console.log(user);
         if (!user) {
             return res.status(401).json({ error: 'Unauthorized - User not found' });
         }

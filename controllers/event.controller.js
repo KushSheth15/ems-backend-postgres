@@ -4,6 +4,7 @@ const { isDate,isEmail } = require('validator');
 const Event = db.Event;
 const User = db.User;
 const Invite = db.Invite;
+const redis = require('../utils/redis-client');
 
 const createEvent = async (req, res) => {
     try {
@@ -34,6 +35,8 @@ const createEvent = async (req, res) => {
             location,
             userId: user.id
         });
+
+        await redis.del('events');
 
         return res.status(201).json(event);
 
@@ -66,6 +69,8 @@ const updateEvent = async (req, res) => {
             location,
             status
         }, { where: { id: eventId } });
+
+        await redis.del(`event:${eventId}`);
 
         return res.status(201).json({ message: "Event Updated Sucessfully", event });
     } catch (error) {
@@ -109,6 +114,8 @@ const inviteUser = async (req, res) => {
             eventId: eventId,
         });
 
+        await redis.del(`event:${eventId}`);
+
         res.status(200).json({ message: "Invitation sent successfully", inviteData });
     } catch (error) {
         console.error(err);
@@ -120,22 +127,32 @@ const userCreatedAndInvitedEvents = async (req, res) => {
     try {
         const userId = req.user.id;
 
+        const cacheKey = `user:${userId}:events`;
+        const cachedEvents = await redis.get(cacheKey);
+
+        if (cachedEvents) {
+            console.log("Events fetched from cache");
+            return res.status(200).json(JSON.parse(cachedEvents));
+        }
+
         const showEvents = await User.findByPk(userId, {
             attributes: ["username", "email"],
             include: [
                 {
-                    model: Event,
-                    as: "createdEvent",
-                    attributes: ["title", "date", "location", "status"],
+                  model: Event,
+                  as: "createdEvents",
+                  attributes: ["title", "date", "location", "status"],
                 },
                 {
-                    model: Event,
-                    as: "invitedEvent",
-                    attributes: ["title", "description", "date", "location", "status"],
-                    through: { attributes: [] }
+                  model: Event,
+                  as: "invitedEvents",
+                  attributes: ["title", "description", "date", "location", "status"],
+                  through: { attributes: [] }
                 }
-            ]
+              ]
         });
+
+        await redis.set(cacheKey, JSON.stringify(showEvents), 'EX', 60 * 60);
 
         return res.status(200).json(showEvents);
 
@@ -148,6 +165,15 @@ const userCreatedAndInvitedEvents = async (req, res) => {
 const getEventWithInvitedUsers = async (req, res) => {
     try {
         const eventId = req.params.id;
+
+        const cacheKey = `event:${eventId}`;
+        const cachedEvent = await redis.get(cacheKey);
+
+        if (cachedEvent) {
+            console.log("Event fetched from cache");
+            return res.status(200).json(JSON.parse(cachedEvent));
+        }
+
         // Find the event with invited users
         const event = await Event.findByPk(eventId, {
             attributes: ["title", "date"],
@@ -163,10 +189,11 @@ const getEventWithInvitedUsers = async (req, res) => {
             ]
         });
 
-
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
+
+        await redis.set(cacheKey, JSON.stringify(event), 'EX', 60 * 60);
 
         return res.status(200).json(event);
 
@@ -195,6 +222,14 @@ const getUserEvents = async (req, res) => {
         // Filter by search term
         if (search) {
             searchFilter.title = { [Op.iLike]: `%${search}%` };
+        }
+
+        const cacheKey = `user:${userId}:events?page=${page}&limit=${limit}&sortBy=${sortBy}&sortOrder=${sortOrder}&startDate=${startDate}&endDate=${endDate}&search=${search}`;
+        const cachedEvents = await redis.get(cacheKey);
+
+        if (cachedEvents) {
+            console.log("Events fetched from cache");
+            return res.status(200).json(JSON.parse(cachedEvents));
         }
 
         // Get events created by the user
@@ -243,7 +278,7 @@ const getUserEvents = async (req, res) => {
             logging: console.log
         });
 
-        return res.status(200).json({
+        const response = {
             createdEvents: {
                 total: createdEvents.count,
                 page: parseInt(page),
@@ -256,7 +291,11 @@ const getUserEvents = async (req, res) => {
                 totalPages: Math.ceil(invitedEvents.count / limit),
                 events: invitedEvents.rows
             }
-        });
+        };
+
+        await redis.set(cacheKey, JSON.stringify(response), 'EX', 60 * 60);
+
+        return res.status(200).json(response);
 
     } catch (error) {
         console.error(error);
