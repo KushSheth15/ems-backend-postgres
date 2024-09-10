@@ -10,23 +10,30 @@ module.exports = {
         defaultValue: Sequelize.UUIDV4,
       },
       username: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false, // Ensure this matches the model
+        unique: true,
       },
       email: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: false, // Ensure this matches the model
+        unique: true,
       },
       password: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: true,
       },
       token: {
-        type: Sequelize.STRING
+        type: Sequelize.STRING,
+        allowNull: true,
       },
       tokenType: {
         type: Sequelize.ENUM('ACCESS', 'RESET', 'REFRESH'),
-        allowNull: true
+        allowNull: true,
       },
       expireAt: {
-        type: Sequelize.DATE
+        type: Sequelize.DATE,
+        allowNull: true,
       },
       createdAt: {
         allowNull: false,

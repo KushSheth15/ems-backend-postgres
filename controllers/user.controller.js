@@ -3,6 +3,7 @@ const User = db.User;
 const { ACCESS_TOKEN_SECRET, REFRESH_TOKEN_SECRET } = require("../config/auth.config");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const passport = require("passport");
 
 const registerUser = async (req, res) => {
     try {
@@ -185,11 +186,80 @@ const updatePassword = async (req,res)=>{
     }
 }
 
+const googleAuth = (req, res, next) => {
+    console.log('Google Auth route hit');
+    passport.authenticate('google', { scope: ['email', 'profile'] })(req, res, next);
+};
+
+const googleAuthCallback = (req,res,next)=>{
+    console.log('Google Auth Callback route hit');
+    passport.authenticate('google',{failureRedirect:'/login'},(err,userData)=>{
+        if(err){
+            console.error('Authentication error:', err);
+            return res.status(500).json({
+                message: 'Authentication failed',
+                error: err.message || 'An unknown error occurred'
+            });
+        }
+
+        if (!userData) {
+            return res.status(400).json({
+                message: 'Authentication failed: No user data found'
+            });
+        }
+
+
+        const {user,accessToken,refreshToken} = userData;
+        res.status(200).json({
+            message:'Google OAuth Authentication Successfull',
+            user,
+            accessToken,
+            refreshToken
+        });
+    })(req,res,next);
+};
+
+const facebookAuth = (req, res, next) => {
+    console.log('Facebook Auth route hit');
+    passport.authenticate('facebook', { scope: ['email'] })(req, res, next);
+};
+
+const facebookAuthCallback = (req, res, next) => {
+    console.log('Facebook Auth Callback route hit');
+    passport.authenticate('facebook', { failureRedirect: '/login' }, (err, userData) => {
+        if (err) {
+            console.error('Authentication error:', err);
+            return res.status(500).json({
+                message: 'Authentication failed',
+                error: err.message || 'An unknown error occurred'
+            });
+        }
+
+        if (!userData) {
+            return res.status(400).json({
+                message: 'Authentication failed: No user data found'
+            });
+        }
+
+        const { user, accessToken, refreshToken } = userData;
+        res.status(200).json({
+            message: 'Facebook OAuth Authentication Successful',
+            user,
+            accessToken,
+            refreshToken
+        });
+    })(req, res, next);
+};
+
 module.exports = {
     registerUser,
     loginUser,
     changePassword,
     resetPassword,
     updatePassword,
-    logoutUser
+    logoutUser,
+    googleAuth,
+    googleAuthCallback,
+    facebookAuth,
+    facebookAuthCallback
 }
